@@ -20,6 +20,7 @@ const (
 	ResultSuccess = "SUCCESS"
 	ResultFail    = "FAIL"
 	ResultNull    = "RESULT NULL" // 查询结果为空
+	NotFound      = "NOT_FOUND"   // 数据不存在
 	SystemError   = "SYSTEMERROR" // 系统繁忙，请稍后再试
 )
 
