@@ -15,20 +15,18 @@ import (
 
 // WXMch 微信商户
 type WXMch struct {
-	appid      string
-	mchid      string
-	apikey     string
-	tlsOptions []utils.TLSOption
-	client     *utils.WXClient
-	tlsClient  *utils.WXClient
+	appid     string
+	mchid     string
+	apikey    string
+	client    *utils.WXClient
+	tlsClient *utils.WXClient
 }
 
 func New(appid, mchid, apikey string) *WXMch {
 	mch := &WXMch{
-		appid:      appid,
-		mchid:      mchid,
-		apikey:     apikey,
-		tlsOptions: make([]utils.TLSOption, 0),
+		appid:  appid,
+		mchid:  mchid,
+		apikey: apikey,
 	}
 
 	mch.client = utils.NewWXClient(utils.WithInsecureSkipVerify())
