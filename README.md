@@ -26,6 +26,18 @@ go get -u github.com/shenghui0779/gochat
 - [公众号](https://github.com/shenghui0779/gochat/wiki/公众号)
 - [小程序](https://github.com/shenghui0779/gochat/wiki/小程序)
 
+
+
+
+## 说明
+
+- 支持 Go1.11+
+- 注意：因 `access_token` 小程序与公众号的每日获取次数有限且含有效期，故服务端应妥善保存 `access_token` 并定时刷新
+- 配合 [yiigo](https://github.com/shenghui0779/yiigo) 使用，可以更方便的操作 `MySQL`、`MongoDB` 与 `Redis` 等
+
+**Enjoy 😊**
+
+
 ## 补充
 
 #### 微信支付回调处理这个项目没有支持所以要手动处理
@@ -153,14 +165,83 @@ func ProcessWX(wxn WXPayNotify) bool {
 	*/
 	return true
 }
+
+/*
+* 支付信息验证
+* param data WXPayNotify
+* reply true/false
+ */
+func WXPayVerify(data WXPayNotify) bool {
+	glog.Info(data)
+	sign := WXmd5Sign(data)
+	if data.Sign == sign {
+		return true
+	} else {
+		glog.V(8).Info(data.Sign, "  !=  ", sign)
+		glog.Warning("WEIXIN PAY VERIFY FAIL")
+	}
+	return false
+}
+
+/*
+* md5签名
+* param data interface{}
+* reply sign 签名字符串
+ */
+func WXmd5Sign(data interface{}) (sign string) {
+	val := make(map[string]string)
+	datavalue := reflect.ValueOf(data)
+	if datavalue.Kind() != reflect.Struct {
+		glog.Warning("NOT A STRUCT ", data)
+		return ""
+	}
+	var keys []string
+	for i := 0; i < datavalue.NumField(); i++ {
+		k := datavalue.Type().Field(i)
+		kl := k.Tag.Get("xml")
+		v := fmt.Sprintf("%v", datavalue.Field(i))
+
+		if v != "" && v != "0" && kl != "sign" {
+			val[kl] = v
+			keys = append(keys, kl)
+		}
+	}
+	sort.Strings(keys)
+	var stra string
+	for _, v := range keys {
+		stra = stra + v + "=" + val[v] + "&"
+	}
+	strb := stra + "key=" + WXPApiKey
+	glog.V(8).Info("SIGN STRING ", strb)
+	hstr := md5.Sum([]byte(strb))
+
+	sum := fmt.Sprintf("%x", hstr)
+	sign = strings.ToUpper(sum)
+	return sign
+}
+
+package main
+
+import (
+	"flag"
+	"log"
+	"net/http"
+	"test/wxpay"
+
+	"github.com/golang/glog"
+)
+
+func main() {
+	flag.Parse()
+	defer glog.Flush()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", wxpay.HandleWXNotify)
+
+	log.Println("server is listening at", ":12138")
+	log.Fatalln(http.ListenAndServe(":12138", mux))
+}
 ```
 
 
-## 说明
-
-- 支持 Go1.11+
-- 注意：因 `access_token` 每日获取次数有限且含有效期，故服务端应妥善保存 `access_token` 并定时刷新
-- 配合 [yiigo](https://github.com/shenghui0779/yiigo) 使用，可以更方便的操作 `MySQL`、`MongoDB` 与 `Redis` 等
-
-**Enjoy 😊**
 
