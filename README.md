@@ -26,6 +26,136 @@ go get -u github.com/shenghui0779/gochat
 - [公众号](https://github.com/shenghui0779/gochat/wiki/公众号)
 - [小程序](https://github.com/shenghui0779/gochat/wiki/小程序)
 
+## 补充
+
+#### 微信支付回调处理这个项目没有支持所以要手动处理
+
+如
+```golang
+package wxpay
+
+import (
+	"crypto/md5"
+	"encoding/xml"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"reflect"
+	"sort"
+	"strings"
+
+	"github.com/golang/glog"
+)
+
+//微信支付回调
+
+const (
+	AckSuccess = `<xml><return_code><![CDATA[SUCCESS]]></return_code></xml>`
+	AckFail    = `<xml><return_code><![CDATA[FAIL]]></return_code></xml>`
+)
+
+//微信 商户Key
+var WXPApiKey string = ""
+
+type WXPayNotify struct {
+	ReturnCode    string `xml:"return_code"`
+	ReturnMsg     string `xml:"return_msg"`
+	Appid         string `xml:"appid"`
+	MchID         string `xml:"mch_id"`
+	DeviceInfo    string `xml:"device_info"`
+	NonceStr      string `xml:"nonce_str"`
+	Sign          string `xml:"sign"`
+	ResultCode    string `xml:"result_code"`
+	ErrCode       string `xml:"err_code"`
+	ErrCodeDes    string `xml:"err_code_des"`
+	Openid        string `xml:"openid"`
+	IsSubscribe   string `xml:"is_subscribe"`
+	TradeType     string `xml:"trade_type"`
+	BankType      string `xml:"bank_type"`
+	TotalFee      int64  `xml:"total_fee"`
+	FeeType       string `xml:"fee_type"`
+	CashFee       int64  `xml:"cash_fee"`
+	CashFeeType   string `xml:"cash_fee_type"`
+	CouponFee     int64  `xml:"coupon_fee"`
+	CouponCount   int64  `xml:"coupon_count"`
+	CouponID0     string `xml:"coupon_id_0"`
+	CouponFee0    int64  `xml:"coupon_fee_0"`
+	TransactionID string `xml:"transaction_id"`
+	OutTradeNo    string `xml:"out_trade_no"`
+	Attach        string `xml:"attach"`
+	TimeEnd       string `xml:"time_end"`
+}
+
+/*
+* 微信回调入口
+* param w http.ResponseWriter
+* param req *http.Request
+ */
+func HandleWXNotify(w http.ResponseWriter, req *http.Request) {
+	log.Println("调用支付")
+	glog.V(8).Info(req)
+
+	if req.Method != "POST" {
+		fmt.Fprint(w, AckFail)
+		return
+	}
+
+	bodydata, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		glog.Error(err)
+		fmt.Fprint(w, AckFail)
+		return
+	}
+
+	glog.Info(string(bodydata))
+	var wxn WXPayNotify
+	err = xml.Unmarshal(bodydata, &wxn)
+	if err != nil {
+		glog.Error(err)
+		fmt.Fprint(w, AckFail)
+		return
+	}
+	if ProcessWX(wxn) {
+		glog.Info("PROCESSWX SUCCESS")
+		fmt.Fprint(w, AckSuccess)
+		return
+	}
+
+	fmt.Fprint(w, AckFail)
+}
+
+/*
+* 处理微信订单
+* param wxn WXPayNotify
+* reply true/false
+ */
+func ProcessWX(wxn WXPayNotify) bool {
+
+	if !WXPayVerify(wxn) {
+		glog.Warning("SIGN FAILED")
+		return false
+	}
+
+	if !(wxn.ReturnCode == "SUCCESS" && wxn.ResultCode == "SUCCESS") {
+		glog.Warning("INVALID STATUS", wxn)
+		return false
+	}
+
+	/*
+		业务逻辑 start
+
+		.
+		.
+		.
+
+		业务逻辑 end
+	*/
+	return true
+}
+```
+
+
 ## 说明
 
 - 支持 Go1.11+
